@@ -121,6 +121,10 @@ spec:
         - --secure-port={{ .Values.securePort }}
         # Prefer to talk to kubelets over InternalIP rather than via Hostname or DNS, to make it more robust
         - --kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP
+        # Required for enabling aggregation layer
+        - --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
+        - --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key
+        - --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
         livenessProbe:
           httpGet:
             scheme: HTTPS

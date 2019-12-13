@@ -4,6 +4,9 @@ serverKey: ""
 serverCertificate: ""
 serviceAccountPublicKey: ""
 caCertificate: ""
+frontProxyClientKey: ""
+frontProxyClientCertificate: ""
+frontProxyCACertificate: ""
 etcdServers: ""
 bindOnHostIP: false
 bindAddress: 0.0.0.0
