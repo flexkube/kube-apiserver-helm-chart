@@ -1,9 +1,9 @@
 replicas: 1
 maxUnavailable: 1
-kubernetesAPIServerKey: ""
-kubernetesAPIServerCertificate: ""
+serverKey: ""
+serverCertificate: ""
 serviceAccountPublicKey: ""
-kubernetesCACertificate: ""
+caCertificate: ""
 etcdServers: ""
 bindOnHostIP: false
 bindAddress: 0.0.0.0
