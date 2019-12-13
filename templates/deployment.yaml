@@ -20,17 +20,12 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      # If only one instance is running, let it be unavailable, as we use
-      # host port, so we cannot have 2 instances running at the same time on a
-      # single node.
+      # We listen on the hostPort, so when having only a one replica, maxUnavailable: 0
+      # prevents updates from rolling as 2 processes cannot listen on a single port.
       #
-      # If there is only one replica of the pod, don't allow it to be unavailable.
-      # However, we use hostPort for exposing it, so updating it won't work, as it
-      {{- if eq .Values.replicas 1.0 }}
-      maxUnavailable: 0
-      {{- else }}
-      maxUnavailable: 1
-      {{- end }}
+      # By default it's 1, but for extra cautious users, it can be set to 0. Then updates must be
+      # rolled manually.
+      maxUnavailable: {{ .Values.maxUnavailable }}
   template:
     metadata:
       labels:
