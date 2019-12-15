@@ -125,6 +125,7 @@ spec:
         - --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
         - --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key
         - --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
+        - --requestheader-allowed-names=""
         livenessProbe:
           httpGet:
             scheme: HTTPS
