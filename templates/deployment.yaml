@@ -36,6 +36,7 @@ spec:
         {{- end }}
       annotations:
         seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       affinity:
         podAntiAffinity:
