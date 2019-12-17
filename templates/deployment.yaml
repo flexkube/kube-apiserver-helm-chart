@@ -100,33 +100,33 @@ spec:
         # We run on host network, but we want to advertise Pod IP address to kubernetes.default.svc service endpoint.
         # Without this line, we may get public IP address being added to the endpoint, which is not correct.
         - --advertise-address=$(HOST_IP)
-        # CA certificate for validating API clients
+        # CA certificate for validating API clients.
         - --client-ca-file=/etc/kubernetes/pki/ca.crt
-        # TLS certificates for HTTPS serving
+        # TLS certificates for HTTPS serving.
         - --tls-cert-file=/etc/kubernetes/pki/apiserver.crt
         - --tls-private-key-file=/etc/kubernetes/pki/apiserver.key
-        # Required for TLS bootstrapping
+        # Required for TLS bootstrapping.
         - --enable-bootstrap-token-auth=true
         # Override default service cluster IP, as it conflicts with host CIDR.
         - --service-cluster-ip-range={{ .Values.serviceCIDR }}
-        # To disable access without authentication
+        # To disable access without authentication.
         - --insecure-port=0
         # Since we will run self-hosted K8s, pods like kube-proxy must run as privileged containers, so we must allow them.
         - --allow-privileged=true
         - --authorization-mode=RBAC,Node
-        # Required to validate service account tokens created by controller manager
+        # Required to validate service account tokens created by controller manager.
         - --service-account-key-file=/etc/kubernetes/pki/service-account.crt
         # Allow to customize TLS port, as some people may want to run it on custom port,
         # for security, to have a LB in front of it or something.
         - --secure-port={{ .Values.securePort }}
-        # Prefer to talk to kubelets over InternalIP rather than via Hostname or DNS, to make it more robust
+        # Prefer to talk to kubelets over InternalIP rather than via Hostname or DNS, to make it more robust.
         - --kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP
-        # Required for enabling aggregation layer
+        # Required for enabling aggregation layer.
         - --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
         - --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key
         - --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
         - --requestheader-allowed-names=""
-        # Required for kubelet communication
+        # Required for kubelet communication.
         - --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt
         - --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key
         livenessProbe:
