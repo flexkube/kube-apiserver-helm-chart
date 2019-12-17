@@ -10,6 +10,9 @@ frontProxyCACertificate: ""
 kubeletClientCertificate: ""
 kubeletClientKey: ""
 etcdServers: ""
+etcdCACertificate: ""
+etcdClientCertificate: ""
+etcdClientKey: ""
 bindOnHostIP: false
 bindAddress: 0.0.0.0
 securePort: 6443

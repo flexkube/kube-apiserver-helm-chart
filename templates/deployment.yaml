@@ -129,6 +129,10 @@ spec:
         # Required for kubelet communication.
         - --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt
         - --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key
+        # Secure communication to etcd servers.
+        - --etcd-cafile=/etc/kubernetes/pki/etcd-ca.crt
+        - --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt
+        - --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key
         livenessProbe:
           httpGet:
             scheme: HTTPS
