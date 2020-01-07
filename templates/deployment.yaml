@@ -77,8 +77,8 @@ spec:
       # With `hostNetwork:true` pod is scheduled on the node, but it will be in crash loop until previous one is manually
       # removed, this is OK.
       hostNetwork: true
-      #nodeSelector:
-      #  node-role.kubernetes.io/master: ""
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
       priorityClassName: system-cluster-critical
       serviceAccountName: kube-apiserver
       tolerations:
