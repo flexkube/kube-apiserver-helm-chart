@@ -1,6 +1,7 @@
 apiVersion: v2
 name: kube-apiserver
 description: kube-apiserver Helm chart.
+icon: https://flexkube.github.io/assets/logo.pn
 
 # A chart can be either an 'application' or a 'library' chart.
 #
