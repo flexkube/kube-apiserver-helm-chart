@@ -87,7 +87,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: kube-apiserver
-        image: k8s.gcr.io/hyperkube:v{{ .Chart.AppVersion }}
+        image: {{ .Values.image | default (printf "k8s.gcr.io/hyperkube:v%s" .Chart.AppVersion) }}
         command:
         - /hyperkube
         - kube-apiserver
