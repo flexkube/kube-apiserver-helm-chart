@@ -3,37 +3,22 @@ kind: Deployment
 metadata:
   name: kube-apiserver
   labels:
-    tier: control-plane
     k8s-app: kube-apiserver
-    {{- if eq .Values.replicas 1.0 }}
-    pdb: controlplane
-    {{- end }}
 spec:
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      tier: control-plane
       k8s-app: kube-apiserver
-      {{- if eq .Values.replicas 1.0 }}
-      pdb: controlplane
-      {{- end }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
       # We listen on the hostPort, so when having only a one replica, maxUnavailable: 0
       # prevents updates from rolling as 2 processes cannot listen on a single port.
-      #
-      # By default it's 1, but for extra cautious users, it can be set to 0. Then updates must be
-      # rolled manually.
       maxUnavailable: {{ .Values.maxUnavailable }}
   template:
     metadata:
       labels:
-        tier: control-plane
         k8s-app: kube-apiserver
-        {{- if eq .Values.replicas 1.0 }}
-        pdb: controlplane
-        {{- end }}
       annotations:
         seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
@@ -46,10 +31,6 @@ spec:
             podAffinityTerm:
               labelSelector:
                 matchExpressions:
-                - key: tier
-                  operator: In
-                  values:
-                  - control-plane
                 - key: k8s-app
                   operator: In
                   values:
@@ -59,10 +40,6 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
               matchExpressions:
-              - key: tier
-                operator: In
-                values:
-                - control-plane
               - key: k8s-app
                 operator: In
                 values:
