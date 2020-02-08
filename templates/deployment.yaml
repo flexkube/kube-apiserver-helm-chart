@@ -25,7 +25,7 @@ spec:
     spec:
       affinity:
         podAntiAffinity:
-          {{- if eq .Values.replicas 1.0 }}
+          {{- if eq (int .Values.replicas) 1 }}
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
             podAffinityTerm:
