@@ -68,7 +68,7 @@ spec:
         command:
         - /hyperkube
         - kube-apiserver
-        - --etcd-servers={{ .Values.etcdServers }}
+        - --etcd-servers={{ required "etcdServers can't be empty!" (join "," .Values.etcdServers) }}
         {{- if .Values.bindOnHostIP }}
         # We run on host network, so we bind only on host IP, which ideally would not be a public interface.
         - --bind-address=$(HOST_IP)

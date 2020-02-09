@@ -9,7 +9,7 @@ frontProxyClientCertificate: ""
 frontProxyCACertificate: ""
 kubeletClientCertificate: ""
 kubeletClientKey: ""
-etcdServers: ""
+etcdServers: []
 etcdCACertificate: ""
 etcdClientCertificate: ""
 etcdClientKey: ""
