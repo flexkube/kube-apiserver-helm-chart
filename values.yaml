@@ -1,5 +1,4 @@
 replicas: 1
-maxUnavailable: 0
 serverKey: ""
 serverCertificate: ""
 serviceAccountPublicKey: ""
@@ -13,9 +12,10 @@ etcdServers: []
 etcdCACertificate: ""
 etcdClientCertificate: ""
 etcdClientKey: ""
-bindOnHostIP: false
-bindAddress: 0.0.0.0
-securePort: 6443
+# Port, where HAProxy/kube-apiserver will be listening and exposing the API.
+securePort: 8443
+# Extra ports, where HAProxy should bind and expose kube-apiserver. The bind address will be then 0.0.0.0.
+extraPorts: []
 # Use the same default as kubeadm
 # https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-init/
 serviceCIDR: "10.96.0.0/12"

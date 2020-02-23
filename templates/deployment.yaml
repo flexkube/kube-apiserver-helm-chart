@@ -12,20 +12,25 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      # We listen on the hostPort, so when having only a one replica, maxUnavailable: 0
-      # prevents updates from rolling as 2 processes cannot listen on a single port.
-      maxUnavailable: {{ .Values.maxUnavailable }}
+      # If there is just one replica, overcommit and temporarily run 2 replicas to avoid downtime.
+      {{- if eq (int .Values.replicas) 1 }}
+      maxUnavailable: 0
+      {{- else }}
+      maxUnavailable: 1
+      {{- end }}
   template:
     metadata:
       labels:
         k8s-app: kube-apiserver
       annotations:
         seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
+        # If any of the secret changes, make rolling restart to apply the change.
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
+      # If there are controller nodes available without a replica, schedule new replicas there,
+      # but still allow to have multiple replicas on a single node.
       affinity:
         podAntiAffinity:
-          {{- if eq (int .Values.replicas) 1 }}
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
             podAffinityTerm:
@@ -36,25 +41,10 @@ spec:
                   values:
                   - kube-apiserver
               topologyKey: kubernetes.io/hostname
-          {{- else }}
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: k8s-app
-                operator: In
-                values:
-                - kube-apiserver
-            topologyKey: kubernetes.io/hostname
-          {{- end }}
-      # Host network is required to be able to communicate with etcd, which runs outside of the cluster.
-      # When running single control plane node, this is not really needed, but it simplifies the config
-      # and makes updating slightly better, as the alternative is to use hostPort, which prevents pod from being
-      # scheduled if previous pod still occupies the node. This make update rely on kube-scheduler without kube-apiserver
-      # running.
-      # With `hostNetwork:true` pod is scheduled on the node, but it will be in crash loop until previous one is manually
-      # removed, this is OK.
+      # With self-hosted kube-apiserver, running on Pod CIDR is difficult, as then kube-apiserver availability relies on kube-proxy (handles translative Service IPs to Pod IPs), CNI (handles assigning IP addresses to Pods) etc., which makes it less robust and we need to absolutely make sure that kube-apiserver is available all the time.
       hostNetwork: true
       nodeSelector:
+        # This node label is a privileged label, which means, that kubelet is not able to set it for itself, which prevents rogue cluster nodes to attract kube-apiserver pod, which would result in leaking all cluster secrets.
         node-role.kubernetes.io/master: ""
       priorityClassName: system-cluster-critical
       serviceAccountName: kube-apiserver
@@ -66,66 +56,59 @@ spec:
       - name: kube-apiserver
         image: {{ .Values.image | default (printf "k8s.gcr.io/hyperkube:v%s" .Chart.AppVersion) }}
         command:
-        - /hyperkube
-        - kube-apiserver
-        - --etcd-servers={{ required "etcdServers can't be empty!" (join "," .Values.etcdServers) }}
-        {{- if .Values.bindOnHostIP }}
-        # We run on host network, so we bind only on host IP, which ideally would not be a public interface.
-        - --bind-address=$(HOST_IP)
-        {{- else }}
-        - --bind-address={{ .Values.bindAddress }}
-        {{- end }}
-        # We run on host network, but we want to advertise Pod IP address to kubernetes.default.svc service endpoint.
-        # Without this line, we may get public IP address being added to the endpoint, which is not correct.
-        - --advertise-address=$(HOST_IP)
-        # CA certificate for validating API clients.
-        - --client-ca-file=/etc/kubernetes/pki/ca.crt
-        # TLS certificates for HTTPS serving.
-        - --tls-cert-file=/etc/kubernetes/pki/apiserver.crt
-        - --tls-private-key-file=/etc/kubernetes/pki/apiserver.key
-        # Required for TLS bootstrapping.
-        - --enable-bootstrap-token-auth=true
-        # Override default service cluster IP, as it conflicts with host CIDR.
-        - --service-cluster-ip-range={{ .Values.serviceCIDR }}
-        # To disable access without authentication.
-        - --insecure-port=0
-        # Since we will run self-hosted K8s, pods like kube-proxy must run as privileged containers, so we must allow them.
-        - --allow-privileged=true
-        - --authorization-mode=RBAC,Node
-        # Required to validate service account tokens created by controller manager.
-        - --service-account-key-file=/etc/kubernetes/pki/service-account.crt
-        # Allow to customize TLS port, as some people may want to run it on custom port,
-        # for security, to have a LB in front of it or something.
-        - --secure-port={{ .Values.securePort }}
-        # Prefer to talk to kubelets over InternalIP rather than via Hostname or DNS, to make it more robust.
-        - --kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP
-        # Required for enabling aggregation layer.
-        - --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
-        - --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key
-        - --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
-        - --requestheader-allowed-names=
-        - --requestheader-extra-headers-prefix=X-Remote-Extra-
-        - --requestheader-group-headers=X-Remote-Group
-        - --requestheader-username-headers=X-Remote-User
-        # Required for kubelet communication.
-        - --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt
-        - --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key
-        - --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt
-        # Secure communication to etcd servers.
-        - --etcd-cafile=/etc/kubernetes/pki/etcd-ca.crt
-        - --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt
-        - --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key
-        # Enable additional admission plugins:
-        # - NodeRestriction for extra protection against rogue cluster nodes.
-        # - PodSecurityPolicy for PSP support.
-        - --enable-admission-plugins=NodeRestriction,PodSecurityPolicy
-        livenessProbe:
-          httpGet:
-            scheme: HTTPS
-            path: /livez
-            port: {{ .Values.securePort }}
-          initialDelaySeconds: 30
-          timeoutSeconds: 30
+        - /bin/sh
+        - -c
+        - |
+          set -x && \
+          exec /hyperkube \
+          kube-apiserver \
+          --etcd-servers={{ required "etcdServers can't be empty!" (join "," .Values.etcdServers) }} \
+          `# Bind on random address generated by initContainer, so we can always bind on the same port, which is required for having correct endpoints in 'kubernetes' service in 'default' namespace, where all pods, which require kube-apiserver communicate. ` \
+          --bind-address=$(cat /run/kube-apiserver/address) \
+          `# We run on host network, but we want to advertise Pod IP address to kubernetes.default.svc service endpoint.` \
+          `# Without this line, we may get public IP address being added to the endpoint, which is not correct.` \
+          --advertise-address=$(HOST_IP) \
+          `# CA certificate for validating API clients.` \
+          --client-ca-file=/etc/kubernetes/pki/ca.crt \
+          `# TLS certificates for HTTPS serving.` \
+          --tls-cert-file=/etc/kubernetes/pki/apiserver.crt \
+          --tls-private-key-file=/etc/kubernetes/pki/apiserver.key \
+          `# Required for TLS bootstrapping.` \
+          --enable-bootstrap-token-auth=true \
+          `# Override default service cluster IP, as it conflicts with host CIDR.` \
+          --service-cluster-ip-range={{ .Values.serviceCIDR }} \
+          `# To disable access without authentication.` \
+          --insecure-port=0 \
+          `# Since we will run self-hosted K8s, pods like kube-proxy must run as privileged containers, so we must allow them.` \
+          --allow-privileged=true \
+          --authorization-mode=RBAC,Node \
+          `# Required to validate service account tokens created by controller manager.` \
+          --service-account-key-file=/etc/kubernetes/pki/service-account.crt \
+          `# Allow to customize TLS port, as some people may want to run it on custom port,` \
+          `# for security, to have a LB in front of it or something.` \
+          --secure-port={{ .Values.securePort }}\
+          `# Prefer to talk to kubelets over InternalIP rather than via Hostname or DNS, to make it more robust.` \
+          --kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP \
+          `# Required for enabling aggregation layer.` \
+          --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt \
+          --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key \
+          --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \
+          --requestheader-allowed-names= \
+          --requestheader-extra-headers-prefix=X-Remote-Extra- \
+          --requestheader-group-headers=X-Remote-Group \
+          --requestheader-username-headers=X-Remote-User \
+          `# Required for kubelet communication.` \
+          --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt \
+          --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key \
+          --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt \
+          `# Secure communication to etcd servers.` \
+          --etcd-cafile=/etc/kubernetes/pki/etcd-ca.crt \
+          --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt \
+          --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key \
+          `# Enable additional admission plugins:` \
+          `# - NodeRestriction for extra protection against rogue cluster nodes.` \
+          `# - PodSecurityPolicy for PSP support.` \
+          --enable-admission-plugins=NodeRestriction,PodSecurityPolicy
         env:
         - name: HOST_IP
           valueFrom:
@@ -135,7 +118,86 @@ spec:
         - name: secrets
           mountPath: /etc/kubernetes/pki
           readOnly: true
+        - name: data
+          mountPath: /run/kube-apiserver
+      # In front of kube-apiserver, run HAProxy, which allows to use SO_REUSEADDR, so there can be multiple instances of kube-apiserver running, even on single host, which makes update process much smoother.
+      - name: haproxy
+        image: haproxy:2.1.3-alpine
+        volumeMounts:
+        - name: data
+          mountPath: /run/kube-apiserver
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -x && \
+          export ADDRESS=$(cat /run/kube-apiserver/address) && \
+          if [ -z $ADDRESS ]; then \
+            `# If ADDRESS is empty, something went wrong with initialization, so just log and exit.` \
+            echo "ADDRESS not found" && \
+            exit 1; \
+          fi && \
+          echo "defaults
+            # Do TLS passthrough.
+            mode tcp
+            # Required values for both frontend and backend.
+            timeout connect 5000ms
+            timeout client 50000ms
+            timeout server 50000ms
+
+          frontend kube-apiserver
+            bind ${HOST_IP}:{{ .Values.securePort }}
+            default_backend kube-apiserver
+
+          {{- range $index, $port := .Values.extraPorts }}
+          frontend kube-apiserver-{{ $index }}
+            bind 0.0.0.0:{{ $port }}
+            default_backend kube-apiserver
+
+          {{- end }}
+
+          backend kube-apiserver
+            server 1 $ADDRESS:{{ .Values.securePort }} check" > /run/kube-apiserver/haproxy.cfg && \
+          echo "Connecting to $ADDRESS:{{ .Values.securePort }}" && \
+          until nc -zv $ADDRESS {{ .Values.securePort }}; do sleep 1; done && \
+          echo "Connected" && \
+          # From https://github.com/docker-library/haproxy/blob/master/Dockerfile-debian.template#L70
+          exec haproxy -f /run/kube-apiserver/haproxy.cfg
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        readinessProbe:
+          tcpSocket:
+            port: 8443
+      initContainers:
+      - name: port-generator
+        image: haproxy:2.1.3-alpine
+        env:
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        command:
+        - /bin/sh
+        - -c
+        - |
+          `# Generate random IP address on which kube-apiserver will be listening, as we cannot randomize the port because of service advertisement` \
+          echo "127.$(shuf -i 0-255 -n 1).$(shuf -i 0-255 -n 1).$(shuf -i 1-253 -n 1)" | tee /run/kube-apiserver/address
+        volumeMounts:
+        - name: data
+          mountPath: /run/kube-apiserver
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
       volumes:
       - name: secrets
         secret:
           secretName: kube-apiserver
+      - name: data
+        emptyDir: {}

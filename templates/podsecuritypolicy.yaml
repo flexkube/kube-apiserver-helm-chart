@@ -12,6 +12,7 @@ spec:
     - ALL
   volumes:
     - 'secret'
+    - 'emptyDir'
   hostNetwork: true
   hostIPC: false
   hostPID: false
