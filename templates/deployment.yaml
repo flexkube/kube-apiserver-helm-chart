@@ -164,10 +164,6 @@ spec:
           # From https://github.com/docker-library/haproxy/blob/master/Dockerfile-debian.template#L70
           exec haproxy -f /run/kube-apiserver/haproxy.cfg
         env:
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
         - name: HOST_IP
           valueFrom:
             fieldRef:
@@ -178,11 +174,6 @@ spec:
       initContainers:
       - name: port-generator
         image: haproxy:2.1.3-alpine
-        env:
-        - name: HOST_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.hostIP
         command:
         - /bin/sh
         - -c
