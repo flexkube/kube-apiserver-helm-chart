@@ -145,6 +145,9 @@ spec:
             mode tcp
             # Required values for both frontend and backend.
             timeout connect 5s
+            timeout client 30s
+            timeout client-fin 30s
+            timeout server 30s
             timeout tunnel 21d
 
           frontend kube-apiserver
@@ -159,7 +162,8 @@ spec:
           {{- end }}
 
           backend kube-apiserver
-            server 1 $ADDRESS:{{ .Values.securePort }} check" > /run/kube-apiserver/haproxy.cfg && \
+            option httpchk GET /healthz HTTP/1.1\r\nHost:\ kube-apiserver
+            server 1 $ADDRESS:{{ .Values.securePort }} verify none check check-ssl" > /run/kube-apiserver/haproxy.cfg && \
           echo "Connecting to $ADDRESS:{{ .Values.securePort }}" && \
           until nc -zv $ADDRESS {{ .Values.securePort }}; do sleep 1; done && \
           echo "Connected" && \
@@ -171,8 +175,10 @@ spec:
             fieldRef:
               fieldPath: status.hostIP
         readinessProbe:
-          tcpSocket:
+          httpGet:
+            path: /healthz
             port: 8443
+            scheme: HTTPS
       initContainers:
       - name: port-generator
         image: haproxy:2.1.3-alpine
