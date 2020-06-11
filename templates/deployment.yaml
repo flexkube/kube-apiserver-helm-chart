@@ -9,6 +9,8 @@ spec:
   selector:
     matchLabels:
       k8s-app: kube-apiserver
+      component: apiserver
+      provider: kubernetes
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -22,6 +24,8 @@ spec:
     metadata:
       labels:
         k8s-app: kube-apiserver
+        component: apiserver
+        provider: kubernetes
       annotations:
         seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
         # If any of the secret changes, make rolling restart to apply the change.
