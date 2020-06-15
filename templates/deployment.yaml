@@ -112,7 +112,8 @@ spec:
           `# Enable additional admission plugins:` \
           `# - NodeRestriction for extra protection against rogue cluster nodes.` \
           `# - PodSecurityPolicy for PSP support.` \
-          --enable-admission-plugins=NodeRestriction,PodSecurityPolicy
+          --enable-admission-plugins=NodeRestriction,PodSecurityPolicy \
+          --target-ram-mb={{ .Values.targetRAMMB }}
         env:
         - name: HOST_IP
           valueFrom:
