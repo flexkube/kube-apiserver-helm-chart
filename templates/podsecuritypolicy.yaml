@@ -17,22 +17,13 @@ spec:
   hostIPC: false
   hostPID: false
   runAsUser:
-    rule: 'MustRunAs'
-    ranges:
-      - min: 1
-        max: 65535
+    rule: 'RunAsAny'
   seLinux:
     rule: 'RunAsAny'
   supplementalGroups:
-    rule: 'MustRunAs'
-    ranges:
-      - min: 1
-        max: 65535
+    rule: 'RunAsAny'
   fsGroup:
-    rule: 'MustRunAs'
-    ranges:
-      - min: 1
-        max: 65535
+    rule: 'RunAsAny'
   readOnlyRootFilesystem: true
 ---
 apiVersion: rbac.authorization.k8s.io/v1
