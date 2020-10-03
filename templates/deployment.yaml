@@ -121,7 +121,10 @@ spec:
           readOnly: true
         resources:
           requests:
-            memory: "500Mi"
+            cpu: 300m
+            memory: 750Mi
+          limits:
+            memory: 3Gi
       volumes:
       - name: secrets
         secret:
