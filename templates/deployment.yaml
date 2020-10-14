@@ -31,20 +31,27 @@ spec:
         # If any of the secret changes, make rolling restart to apply the change.
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
-      # If there are controller nodes available without a replica, schedule new replicas there,
-      # but still allow to have multiple replicas on a single node.
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            k8s-app: kube-apiserver
+      # If there is more than one replica needed, make sure they run on different hosts to avoid
+      # RAM starvation on smaller instances.
+      {{- if gt (int .Values.replicas) 1 }}
       affinity:
         podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: k8s-app
-                  operator: In
-                  values:
-                  - kube-apiserver
-              topologyKey: kubernetes.io/hostname
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: k8s-app
+                operator: In
+                values:
+                - kube-apiserver
+            topologyKey: kubernetes.io/hostname
+      {{- end }}
       # With self-hosted kube-apiserver, running on Pod CIDR is difficult, as then kube-apiserver availability relies on kube-proxy (handles translative Service IPs to Pod IPs), CNI (handles assigning IP addresses to Pods) etc., which makes it less robust and we need to absolutely make sure that kube-apiserver is available all the time.
       hostNetwork: true
       nodeSelector:
@@ -122,7 +129,7 @@ spec:
         resources:
           requests:
             cpu: 300m
-            memory: 750Mi
+            memory: 1Gi
           limits:
             memory: 3Gi
       volumes:
