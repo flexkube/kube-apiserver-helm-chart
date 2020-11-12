@@ -117,6 +117,9 @@ spec:
         - --target-ram-mb={{ .Values.targetRAMMB }}
         # Use SO_REUSEPORT, so multiple instances can run on the same controller for smooth upgrades.
         - --permit-port-sharing=true
+        # To taint node after 60 seconds instead of 300 to allow faster failover.
+        - --default-not-ready-toleration-seconds=60
+        - --default-unreachable-toleration-seconds=60
         env:
         - name: HOST_IP
           valueFrom:
