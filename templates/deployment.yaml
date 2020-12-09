@@ -86,7 +86,7 @@ spec:
         - --allow-privileged=true
         - --authorization-mode=RBAC,Node
         # Required to validate service account tokens created by controller manager.
-        - --service-account-key-file=/etc/kubernetes/pki/service-account.crt
+        - --service-account-key-file=/etc/kubernetes/pki/service-account.key
         # Allow to customize TLS port, as some people may want to run it on custom port,
         # for security, to have a LB in front of it or something.
         - --secure-port={{ .Values.securePort }}
