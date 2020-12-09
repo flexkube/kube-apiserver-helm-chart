@@ -20,4 +20,3 @@ extraPorts: []
 # https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-init/
 serviceCIDR: "10.96.0.0/12"
 image: ""
-targetRAMMB: 512

@@ -114,7 +114,6 @@ spec:
         # - NodeRestriction for extra protection against rogue cluster nodes.
         # - PodSecurityPolicy for PSP support.
         - --enable-admission-plugins=NodeRestriction,PodSecurityPolicy
-        - --target-ram-mb={{ .Values.targetRAMMB }}
         # Use SO_REUSEPORT, so multiple instances can run on the same controller for smooth upgrades.
         - --permit-port-sharing=true
         # To taint node after 60 seconds instead of 300 to allow faster failover.
