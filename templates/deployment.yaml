@@ -82,8 +82,6 @@ spec:
         - --enable-bootstrap-token-auth=true
         # Override default service cluster IP, as it conflicts with host CIDR.
         - --service-cluster-ip-range={{ .Values.serviceCIDR }}
-        # To disable access without authentication.
-        - --insecure-port=0
         # Since we will run self-hosted K8s, pods like kube-proxy must run as privileged containers, so we must allow them.
         - --allow-privileged=true
         - --authorization-mode=RBAC,Node
@@ -119,6 +117,10 @@ spec:
         # To taint node after 60 seconds instead of 300 to allow faster failover.
         - --default-not-ready-toleration-seconds=60
         - --default-unreachable-toleration-seconds=60
+        # New flags required for TokenRequest feature.
+        - --service-account-issuer=https://kubernetes.default.svc
+        - --service-account-key-file=/etc/kubernetes/pki/service-account.crt
+        - --service-account-signing-key-file=/etc/kubernetes/pki/service-account.key
         env:
         - name: HOST_IP
           valueFrom:

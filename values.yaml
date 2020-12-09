@@ -2,6 +2,7 @@ replicas: 1
 serverKey: ""
 serverCertificate: ""
 serviceAccountPublicKey: ""
+serviceAccountPrivateKey: ""
 caCertificate: ""
 frontProxyClientKey: ""
 frontProxyClientCertificate: ""
