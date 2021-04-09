@@ -8,6 +8,8 @@ metadata:
 spec:
   privileged: false
   allowPrivilegeEscalation: false
+  allowedCapabilities:
+    - NET_BIND_SERVICE
   requiredDropCapabilities:
     - ALL
   volumes:
