@@ -64,7 +64,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: kube-apiserver
-        image: {{ .Values.image | default (printf "k8s.gcr.io/kube-apiserver:v%s" .Chart.AppVersion) }}
+        image: {{ .Values.image | default (printf "registry.k8s.io/kube-apiserver:v%s" .Chart.AppVersion) }}
         command:
         - kube-apiserver
         - --etcd-servers={{ required "etcdServers can't be empty!" (join "," .Values.etcdServers) }}
@@ -109,8 +109,7 @@ spec:
         - --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key
         # Enable additional admission plugins:
         # - NodeRestriction for extra protection against rogue cluster nodes.
-        # - PodSecurityPolicy for PSP support.
-        - --enable-admission-plugins=NodeRestriction,PodSecurityPolicy
+        - --enable-admission-plugins=NodeRestriction
         # Use SO_REUSEPORT, so multiple instances can run on the same controller for smooth upgrades.
         - --permit-port-sharing=true
         # To taint node after 60 seconds instead of 300 to allow faster failover.
